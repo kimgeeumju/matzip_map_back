@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String
+  nickname      String
+  bio           String?
+  followerCount Int      @default(0)
+  followingCount Int     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  places        Place[]
+  collections   Collection[]
+
+  @@map("users")
+}
+
+model Place {
+  id           String   @id @default(cuid())
+  userId       String
+  name         String
+  address      String?
+  lat          Float
+  lng          Float
+  rating       Float?   @default(0)
+  category     String
+  photos       Json?    // ["url1", "url2"]
+  date         String?
+  isFavorite   Boolean  @default(false)
+  isWishlist   Boolean  @default(false)
+  memo         String?
+
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("places")
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  placeIds    String[] // ["placeId1", "placeId2"]
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("collections")
+}
