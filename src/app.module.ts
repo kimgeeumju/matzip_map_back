@@ -13,15 +13,15 @@ import { LoggerMiddleware } from './@common/logger';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // ✅ 여기만 이렇게 수정
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5432', 10),
-      username: process.env.DB_USERNAME || 'postgres',
-      password: process.env.DB_PASSWORD || 'password',   // ← 무조건 string이 되게
-      database: process.env.DB_DATABASE || 'postgres',
-      entities: [__dirname + '/**/*.entity.{js,ts}'],
+
+      url:
+        process.env.DATABASE_URL ||
+        'postgresql://postgres:aCCpkQkytCejbOYQudJXpOWaTFljqxVn@postgres.railway.internal:5432/railway',
+
+      autoLoadEntities: true,
+
       synchronize: true,
     }),
 
