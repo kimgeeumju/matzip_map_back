@@ -8,7 +8,7 @@ async function bootstrap() {
     origin: [
       "http://localhost:3000",
       "http://localhost:5173",
-      "https://kimgeeumju.github.io/matzip_map/",
+      "https://kimgeeumju.github.io",
       "https://github.com/kimgeeumju/matzip_map",
     ],
     credentials: true,
