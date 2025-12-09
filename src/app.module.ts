@@ -15,13 +15,8 @@ import { LoggerMiddleware } from './@common/logger';
 
     TypeOrmModule.forRoot({
       type: 'postgres',
-
-      url:
-        process.env.DATABASE_URL ||
-        'postgresql://postgres:aCCpkQkytCejbOYQudJXpOWaTFljqxVn@postgres.railway.internal:5432/railway',
-
+      url: process.env.DATABASE_URL, //
       autoLoadEntities: true,
-
       synchronize: true,
     }),
 
