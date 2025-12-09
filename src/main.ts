@@ -6,16 +6,6 @@ async function bootstrap() {
 
   app.enableCors();
 
-  app.enableCors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "https://kimgeeumju.github.io",
-      "https://github.com/kimgeeumju/matzip_map",
-    ],
-    credentials: true,
-  });
-
   const port = process.env.PORT || 3000;
   await app.listen(port);
 }
