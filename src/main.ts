@@ -4,12 +4,17 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // 🔥 이 부분 추가
   app.enableCors({
-    origin: 'http://localhost:5173', // Vite 프론트 주소
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "https://kimgeeumju.github.io/matzip_map/",
+      "https://github.com/kimgeeumju/matzip_map",
+    ],
     credentials: true,
   });
 
-  await app.listen(3030);
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
 }
 bootstrap();

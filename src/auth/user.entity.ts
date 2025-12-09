@@ -1,5 +1,5 @@
-import { Favorite } from 'src/favorite/favorite.entity';
-import { Post } from 'src/post/post.entity';
+import { Favorite } from '../favorite/favorite.entity';
+import { Post } from '../post/post.entity';
 import {
   BaseEntity,
   Column,

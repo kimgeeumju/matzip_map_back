@@ -9,7 +9,7 @@ import { Post } from './post.entity';
 import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
 import { User } from 'src/auth/user.entity';
 import { Image } from 'src/image/image.entity';
-import { sleep } from 'src/@common/sleep';
+import { sleep } from '../@common/sleep';
 
 @Injectable()
 export class PostService {

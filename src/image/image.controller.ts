@@ -9,7 +9,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { basename, extname } from 'path';
-import { numbers } from 'src/@common/contants';
+import { numbers } from '../@common/contants';
 import * as fs from 'fs';
 
 try {

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Favorite } from './favorite.entity';
 import { Repository } from 'typeorm';
 import { User } from 'src/auth/user.entity';
-import { sleep } from 'src/@common/sleep';
+import { sleep } from '../@common/sleep';
 
 @Injectable()
 export class FavoriteService {
