@@ -43,7 +43,7 @@ export class User extends BaseEntity {
   deletedAt: Date | null;
 
   @Column({ nullable: true })
-  hashedRefreshToken?: string;
+  hashedRefreshToken: string | null;
 
   @OneToMany(() => Post, (post) => post.user, { eager: false })
   post: Post[];

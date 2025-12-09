@@ -11,9 +11,9 @@ import {
 } from 'typeorm';
 
 import { ColumnNumericTransformer } from '../@common/transformers/numeric.transformer';
-import { User } from 'src/auth/user.entity';
-import { Image } from 'src/image/image.entity';
-import { Favorite } from 'src/favorite/favorite.entity';
+import { User } from '../auth/user.entity';
+import { Image } from '../image/image.entity';
+import { Favorite } from '../favorite/favorite.entity';
 
 @Entity()
 export class Post extends BaseEntity {

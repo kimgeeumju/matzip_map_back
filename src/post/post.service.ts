@@ -7,8 +7,8 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Post } from './post.entity';
 import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
-import { User } from 'src/auth/user.entity';
-import { Image } from 'src/image/image.entity';
+import { User } from '../auth/user.entity';
+import { Image } from '../image/image.entity';
 import { sleep } from '../@common/sleep';
 
 @Injectable()

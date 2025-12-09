@@ -1,4 +1,4 @@
-import { Post } from 'src/post/post.entity';
+import { Post } from '../post/post.entity';
 import {
   BaseEntity,
   Column,

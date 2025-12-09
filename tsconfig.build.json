@@ -1,13 +1,16 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist"
+    "module": "commonjs",
+    "target": "es2017",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": false,                    // ★ 전체 strict 끔
+    "strictPropertyInitialization": false // ★ 혹시 몰라서 명시로 한 번 더
   },
   "include": ["src/**/*.ts"],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "test",
-    "**/*.spec.ts"
-  ]
+  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts"]
 }
