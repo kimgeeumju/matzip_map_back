@@ -1,3 +1,4 @@
+// src/auth/user.entity.ts
 import { Favorite } from '../favorite/favorite.entity';
 import { Post } from '../post/post.entity';
 import {
@@ -18,7 +19,8 @@ export class User extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  // 🔥 기본값을 'email'로 두어서 명시적으로 이메일 로그인과 소셜 로그인 구분
+  @Column({ type: 'varchar', default: 'email' })
   loginType: 'email' | 'kakao' | 'apple';
 
   @Column()

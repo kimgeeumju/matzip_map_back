@@ -1,3 +1,4 @@
+// src/auth/auth.service.ts
 import axios from 'axios';
 import appleSignin from 'apple-signin-auth';
 import {
@@ -27,21 +28,35 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
+  // 🔐 회원가입 (이메일 로그인 전용)
   async signup(authDto: AuthDto) {
     const { email, password } = authDto;
+
+    // 0) 이미 같은 이메일의 "email 로그인" 계정이 있는지 먼저 확인
+    const exists = await this.userRepository.findOne({
+      where: { email, loginType: 'email' },
+    });
+    if (exists) {
+      throw new ConflictException('이미 존재하는 이메일입니다.');
+    }
+
+    // 1) 비밀번호 해시
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // 2) 유저 엔티티 생성
     const user = this.userRepository.create({
       email,
       password: hashedPassword,
       loginType: 'email',
     });
 
+    // 3) 저장
     try {
       await this.userRepository.save(user);
-    } catch (error:any) {
+    } catch (error: any) {
       console.log(error);
+      // unique 제약 위반
       if (error && error.code === '23505') {
         throw new ConflictException('이미 존재하는 이메일입니다.');
       }
@@ -50,6 +65,12 @@ export class AuthService {
         '회원가입 도중 에러가 발생했습니다.',
       );
     }
+
+    // 4) (선택) 바로 토큰 발급해서 반환 → 프론트에서 원하면 자동로그인에 사용 가능
+    const { accessToken, refreshToken } = await this.getTokens({ email });
+    await this.updateHashedRefreshToken(user.id, refreshToken);
+
+    return { accessToken, refreshToken };
   }
 
   private async getTokens(payload: { email: string }) {
@@ -67,16 +88,30 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  // 🔐 이메일 로그인
   async signin(authDto: AuthDto) {
     const { email, password } = authDto;
-    const user = await this.userRepository.findOneBy({ email });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    // 1) loginType까지 포함해서 "email 로그인"용 계정만 찾기
+    const user = await this.userRepository.findOne({
+      where: { email, loginType: 'email' },
+    });
+
+    // 2) 유저가 없으면 or 비밀번호 불일치면 동일한 메시지
+    if (!user) {
       throw new UnauthorizedException(
         '이메일 또는 비밀번호가 일치하지 않습니다.',
       );
     }
 
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new UnauthorizedException(
+        '이메일 또는 비밀번호가 일치하지 않습니다.',
+      );
+    }
+
+    // 3) 토큰 발급 + refresh 토큰 해시 저장
     const { accessToken, refreshToken } = await this.getTokens({ email });
     await this.updateHashedRefreshToken(user.id, refreshToken);
 
@@ -97,12 +132,12 @@ export class AuthService {
 
   async refreshToken(user: User) {
     const { email } = user;
-    const { accessToken, refreshToken } = await this.getTokens({ email });
 
     if (!user.hashedRefreshToken) {
       throw new ForbiddenException();
     }
 
+    const { accessToken, refreshToken } = await this.getTokens({ email });
     await this.updateHashedRefreshToken(user.id, refreshToken);
 
     return { accessToken, refreshToken };
@@ -149,6 +184,7 @@ export class AuthService {
     }
   }
 
+  // 🔐 카카오 로그인
   async kakaoLogin(kakaoToken: { token: string }) {
     const url = 'https://kapi.kakao.com/v2/user/me';
     const headers = {
@@ -162,8 +198,9 @@ export class AuthService {
       const { id: kakaoId, kakao_account } = userData;
       const nickname = kakao_account?.profile.nickname;
 
-      const existingUser = await this.userRepository.findOneBy({
-        email: kakaoId,
+      // 카카오 유저는 loginType = 'kakao' 로 관리
+      const existingUser = await this.userRepository.findOne({
+        where: { email: kakaoId.toString(), loginType: 'kakao' },
       });
 
       if (existingUser) {
@@ -176,7 +213,7 @@ export class AuthService {
       }
 
       const newUser = this.userRepository.create({
-        email: kakaoId,
+        email: kakaoId.toString(),
         password: nickname ?? '',
         nickname,
         loginType: 'kakao',
@@ -201,6 +238,7 @@ export class AuthService {
     }
   }
 
+  // 🔐 애플 로그인
   async appleLogin(appleIdentity: {
     identityToken: string;
     appId: string;
@@ -217,8 +255,8 @@ export class AuthService {
         },
       );
 
-      const existingUser = await this.userRepository.findOneBy({
-        email: userAppleId,
+      const existingUser = await this.userRepository.findOne({
+        where: { email: userAppleId, loginType: 'apple' },
       });
 
       if (existingUser) {
