@@ -2,7 +2,6 @@
 import axios from 'axios';
 import appleSignin from 'apple-signin-auth';
 import {
-  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -28,13 +27,13 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  // 🔐 회원가입 (이메일 로그인 전용) - "저장만" 하고 끝
+  // 🔐 회원가입 (이메일 로그인 전용) - DB에 유저 저장만
   async signup(authDto: AuthDto) {
-    // 이메일은 소문자 + 앞뒤 공백 제거해서 통일
+    // 이메일은 소문자 + 공백 제거해서 통일
     const email = authDto.email.trim().toLowerCase();
     const password = authDto.password;
 
-    // 0) 이미 같은 이메일의 "email 로그인" 계정이 있는지 먼저 확인
+    // 0) 이미 같은 이메일의 email 로그인 계정 있는지 확인
     const exists = await this.userRepository.findOne({
       where: { email, loginType: 'email' },
     });
@@ -57,12 +56,10 @@ export class AuthService {
     // 3) 저장만 하고 끝 (토큰 발급 X)
     try {
       await this.userRepository.save(user);
-      // 컨트롤러가 따로 응답코드/메시지 정해주고 있다면 여기서 굳이 return 안 해도 됨
       return;
     } catch (error: any) {
       console.log('SIGNUP SAVE ERROR:', error);
 
-      // unique 제약 위반
       if (error && error.code === '23505') {
         throw new ConflictException('이미 존재하는 이메일입니다.');
       }
@@ -73,16 +70,25 @@ export class AuthService {
     }
   }
 
-  // 토큰 발급 유틸
+  // 🔑 토큰 발급 유틸 (환경변수 없어도 기본값으로 동작)
   private async getTokens(payload: { email: string }) {
+    const secret =
+      this.configService.get<string>('JWT_SECRET') ?? 'dev-secret-key';
+
+    const accessExp =
+      this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRATION') ?? '1h';
+
+    const refreshExp =
+      this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRATION') ?? '7d';
+
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get('JWT_SECRET'),
-        expiresIn: this.configService.get('JWT_ACCESS_TOKEN_EXPIRATION'),
+        secret,
+        expiresIn: accessExp,
       }),
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get('JWT_SECRET'),
-        expiresIn: this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION'),
+        secret,
+        expiresIn: refreshExp,
       }),
     ]);
 
@@ -91,11 +97,11 @@ export class AuthService {
 
   // 🔐 이메일 로그인
   async signin(authDto: AuthDto) {
-    // signup이랑 똑같이 이메일 정규화
+    // signup과 동일하게 정규화
     const email = authDto.email.trim().toLowerCase();
     const password = authDto.password;
 
-    // 1) loginType까지 포함해서 "email 로그인"용 계정만 찾기
+    // 1) 이메일 + loginType으로 유저 찾기
     const user = await this.userRepository.findOne({
       where: { email, loginType: 'email' },
     });
@@ -106,7 +112,6 @@ export class AuthService {
       user && { id: user.id, email: user.email, loginType: user.loginType },
     );
 
-    // 유저가 없으면
     if (!user) {
       console.log('SIGNIN FAIL: user not found');
       throw new UnauthorizedException(
@@ -126,7 +131,14 @@ export class AuthService {
 
     // 3) 토큰 발급 + refresh 토큰 해시 저장
     const { accessToken, refreshToken } = await this.getTokens({ email });
-    await this.updateHashedRefreshToken(user.id, refreshToken);
+
+    try {
+      await this.updateHashedRefreshToken(user.id, refreshToken);
+    } catch (error) {
+      console.log('UPDATE REFRESH TOKEN ERROR:', error);
+      // 토큰 저장 실패해도, 일단 로그인은 되게 토큰은 반환
+      return { accessToken, refreshToken };
+    }
 
     return { accessToken, refreshToken };
   }
@@ -135,12 +147,7 @@ export class AuthService {
     const salt = await bcrypt.genSalt();
     const hashedRefreshToken = await bcrypt.hash(refreshToken, salt);
 
-    try {
-      await this.userRepository.update(id, { hashedRefreshToken });
-    } catch (error) {
-      console.log(error);
-      throw new InternalServerErrorException();
-    }
+    await this.userRepository.update(id, { hashedRefreshToken });
   }
 
   async refreshToken(user: User) {
@@ -210,7 +217,6 @@ export class AuthService {
       const { id: kakaoId, kakao_account } = userData;
       const nickname = kakao_account?.profile.nickname;
 
-      // 카카오 유저는 loginType = 'kakao' 로 관리
       const existingUser = await this.userRepository.findOne({
         where: { email: kakaoId.toString(), loginType: 'kakao' },
       });
