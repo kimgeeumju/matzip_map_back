@@ -28,14 +28,17 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  // 🔐 회원가입 (이메일 로그인 전용)
+  // 🔐 회원가입 (이메일 로그인 전용) - "저장만" 하고 끝
   async signup(authDto: AuthDto) {
-    const { email, password } = authDto;
+    // 이메일은 소문자 + 앞뒤 공백 제거해서 통일
+    const email = authDto.email.trim().toLowerCase();
+    const password = authDto.password;
 
     // 0) 이미 같은 이메일의 "email 로그인" 계정이 있는지 먼저 확인
     const exists = await this.userRepository.findOne({
       where: { email, loginType: 'email' },
     });
+
     if (exists) {
       throw new ConflictException('이미 존재하는 이메일입니다.');
     }
@@ -51,11 +54,14 @@ export class AuthService {
       loginType: 'email',
     });
 
-    // 3) 저장
+    // 3) 저장만 하고 끝 (토큰 발급 X)
     try {
       await this.userRepository.save(user);
+      // 컨트롤러가 따로 응답코드/메시지 정해주고 있다면 여기서 굳이 return 안 해도 됨
+      return;
     } catch (error: any) {
-      console.log(error);
+      console.log('SIGNUP SAVE ERROR:', error);
+
       // unique 제약 위반
       if (error && error.code === '23505') {
         throw new ConflictException('이미 존재하는 이메일입니다.');
@@ -65,14 +71,9 @@ export class AuthService {
         '회원가입 도중 에러가 발생했습니다.',
       );
     }
-
-    // 4) (선택) 바로 토큰 발급해서 반환 → 프론트에서 원하면 자동로그인에 사용 가능
-    const { accessToken, refreshToken } = await this.getTokens({ email });
-    await this.updateHashedRefreshToken(user.id, refreshToken);
-
-    return { accessToken, refreshToken };
   }
 
+  // 토큰 발급 유틸
   private async getTokens(payload: { email: string }) {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
@@ -90,21 +91,33 @@ export class AuthService {
 
   // 🔐 이메일 로그인
   async signin(authDto: AuthDto) {
-    const { email, password } = authDto;
+    // signup이랑 똑같이 이메일 정규화
+    const email = authDto.email.trim().toLowerCase();
+    const password = authDto.password;
 
     // 1) loginType까지 포함해서 "email 로그인"용 계정만 찾기
     const user = await this.userRepository.findOne({
       where: { email, loginType: 'email' },
     });
 
-    // 2) 유저가 없으면 or 비밀번호 불일치면 동일한 메시지
+    console.log('SIGNIN TRY:', email);
+    console.log(
+      'FOUND USER:',
+      user && { id: user.id, email: user.email, loginType: user.loginType },
+    );
+
+    // 유저가 없으면
     if (!user) {
+      console.log('SIGNIN FAIL: user not found');
       throw new UnauthorizedException(
         '이메일 또는 비밀번호가 일치하지 않습니다.',
       );
     }
 
+    // 2) 비밀번호 비교
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log('PASSWORD MATCH:', isMatch);
+
     if (!isMatch) {
       throw new UnauthorizedException(
         '이메일 또는 비밀번호가 일치하지 않습니다.',
@@ -145,7 +158,6 @@ export class AuthService {
 
   getProfile(user: User) {
     const { password, hashedRefreshToken, ...rest } = user;
-
     return { ...rest };
   }
 
